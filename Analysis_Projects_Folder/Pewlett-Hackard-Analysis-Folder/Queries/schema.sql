@@ -216,7 +216,7 @@ SELECT ce.emp_no,
 	ce.first_name,
 	ce.last_name,
 	d.dept_name	
--- INTO dept_info
+INTO dept_info
 FROM current_emp as ce
 INNER JOIN dept_emp AS de
 ON (ce.emp_no = de.emp_no)
@@ -248,4 +248,80 @@ WHERE sd.dept_no IN ('d007', 'd005') --USE IN OPERATOR TO CHOOSE FROM A LIST
 ORDER BY sd.last_name;
 
 --##CHALLENGE##
+--Deliverable 1: Number of Retiring Employees by Title
+DROP TABLE retirement_list;
+SELECT e.emp_no, 
+	e.first_name,
+	e.last_name,
+	t.title,
+	t.from_date AS "title_from",
+	s.salary
+INTO retirement_list
+FROM employees AS e
+INNER JOIN salaries AS s
+ON (e.emp_no = s.emp_no)
+INNER JOIN titles as t
+ON (e.emp_no = t.emp_no)
+WHERE (e.birth_date BETWEEN '1952-01-01' AND '1955-12-31')
+AND (t.to_date = '9999-01-01');
 
+--USING PARTITIONING AS RECOMMENDED BY THE MODULE
+-- Partition the data to show only most recent title per employee
+SELECT e.emp_no, 
+	e.first_name,
+	e.last_name,
+	t.title,
+	t.from_date AS "title_from",
+	s.salary
+INTO retirement_list_2
+FROM employees AS e
+INNER JOIN salaries AS s
+ON (e.emp_no = s.emp_no)
+INNER JOIN titles as t
+ON (e.emp_no = t.emp_no)
+WHERE (e.birth_date BETWEEN '1952-01-01' AND '1955-12-31');
+
+
+--checking for duplicate emp_no
+SELECT
+  emp_no,
+  count(*)
+FROM retirement_list_2
+GROUP BY
+  emp_no
+HAVING count(*) > 1; -- results show duplicates 
+--without the filter AND (t.to_date = '9999-01-01')!
+
+--show the duplicate rows with the data using PARTITION
+SELECT emp_no, 
+	last_name, 
+	first_name, 
+	title, 
+	title_from, 
+	salary
+INTO retirement_list_using_partition
+FROM
+  (SELECT *, count(*)
+  OVER
+    (PARTITION BY
+      emp_no
+    ) AS count
+  FROM retirement_list_2) tableWithCount
+  WHERE tableWithCount.count > 1;
+ 
+--Deliverable 2: Mentorship Eligibility
+SELECT e.emp_no,
+	e.first_name,
+	e.last_name,
+	t.title,
+	t.from_date,
+	t.to_date
+INTO mentor_list
+FROM employees AS e
+INNER JOIN titles AS t
+ON (e.emp_no = t.emp_no)
+WHERE (e.birth_date BETWEEN '1965-01-01' AND '1965-12-31')
+AND (t.to_date = '9999-01-01');
+
+
+	
